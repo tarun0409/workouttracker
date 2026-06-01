@@ -19,6 +19,7 @@ interface ExerciseItem {
   name: string;
   equipment: string;
   setCount: number;
+  sessionId: string;   // which session this exercise belongs to
 }
 
 export default function DayDetailScreen() {
@@ -41,7 +42,12 @@ export default function DayDetailScreen() {
       .filter(s => toDateStr(new Date(s.date)) === dateKey)
       .forEach(session => {
         session.exercises.forEach(ex => {
-          items.push({ name: ex.name, equipment: ex.equipment, setCount: ex.sets.length });
+          items.push({
+            name: ex.name,
+            equipment: ex.equipment,
+            setCount: ex.sets.length,
+            sessionId: session.id,   // track ownership so Edit only touches this session
+          });
         });
       });
     setExercises(items);
@@ -54,8 +60,15 @@ export default function DayDetailScreen() {
   const closeOptions = () => setSelected(null);
 
   const goEdit = () => {
+    if (!selected) return;
     closeOptions();
-    navigation.navigate('EditWorkout', { dateKey, dateLabel, sessionIds });
+    // Pass ONLY the session that owns the tapped exercise, not all sessions for
+    // the day — otherwise changing the date would move every workout on that day.
+    navigation.navigate('EditWorkout', {
+      dateKey,
+      dateLabel,
+      sessionIds: [selected.sessionId],
+    });
   };
 
   const goHistory = () => {

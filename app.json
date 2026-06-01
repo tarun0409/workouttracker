@@ -7,10 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "bundleIdentifier": "com.yourname.workouttracker",
+      "bundleIdentifier": "com.tarunmoh.workouttracker",
       "supportsTablet": false,
       "infoPlist": {
-        "NSMotionUsageDescription": "Used to count your daily steps automatically."
+        "NSMotionUsageDescription": "Used to count your daily steps automatically.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -30,6 +31,11 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "12ea2ea3-3cda-446f-909b-89ff6b29dc86"
+      }
+    }
   }
 }

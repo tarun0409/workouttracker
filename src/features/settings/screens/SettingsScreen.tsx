@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useSettings } from '../../../hooks/useSettings';
@@ -43,20 +43,19 @@ export default function SettingsScreen() {
       const data = await exportData();
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `workout_backup_${dateStr}.json`;
-      // Use new expo-file-system File API
-      const file = new File(Paths.cache, fileName);
-      if (file.exists) file.delete();
-      file.create();
-      file.write(JSON.stringify(data, null, 2));
+      const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(data, null, 2), {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(file.uri, {
+        await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
           dialogTitle: 'Export Workout Data',
           UTI: 'public.json',
         });
       } else {
-        Alert.alert('Saved', `Backup saved to:\n${file.uri}`);
+        Alert.alert('Saved', `Backup saved to:\n${fileUri}`);
       }
     } catch (e: any) {
       Alert.alert('Export Failed', e?.message ?? 'An unknown error occurred.');
@@ -74,9 +73,9 @@ export default function SettingsScreen() {
       if (result.canceled) return;
       setImporting(true);
       const fileUri = result.assets[0].uri;
-      // Use new expo-file-system File API
-      const file = new File(fileUri);
-      const content = await file.text();
+      const content = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       const data = JSON.parse(content);
       await importData(data);
       Alert.alert(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -8,7 +8,8 @@ import { getSessions } from '../../../storage/workoutStorage';
 import { enqueueExercise } from '../exerciseQueue';
 import { colors } from '../../../constants/colors';
 
-const EQUIPMENT = [
+// Seed list — always available as suggestions even on first launch
+const DEFAULT_EQUIPMENT = [
   'Barbell', 'Dumbbell', 'Smith Machine', 'Cable',
   'Bodyweight', 'Kettlebell', 'Machine', 'Band', 'Other',
 ];
@@ -51,34 +52,65 @@ function toTitleCase(str: string): string {
 
 export default function AddExerciseScreen() {
   const navigation = useNavigation();
-  const [name, setName] = useState('');
-  const [equipment, setEquipment] = useState('Barbell');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [allNames, setAllNames] = useState<string[]>([]);
+  const equipmentRef = useRef<TextInput>(null);
+  const skipNameSuggest = useRef(false);
+  const skipEquipmentSuggest = useRef(false);
 
+  const [name, setName] = useState('');
+  const [equipment, setEquipment] = useState('Dumbbell');
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [equipmentSuggestions, setEquipmentSuggestions] = useState<string[]>([]);
+  const [allNames, setAllNames] = useState<string[]>([]);
+  const [allEquipment, setAllEquipment] = useState<string[]>(DEFAULT_EQUIPMENT);
+
+  // Load past exercise names and equipment types from storage
   useEffect(() => {
     getSessions().then(sessions => {
       const names = new Set<string>();
-      sessions.forEach(s => s.exercises.forEach(e => names.add(e.name)));
+      const equips = new Set<string>(DEFAULT_EQUIPMENT);
+      sessions.forEach(s => s.exercises.forEach(e => {
+        names.add(e.name);
+        equips.add(e.equipment);
+      }));
       setAllNames(Array.from(names).sort());
+      setAllEquipment(Array.from(equips).sort());
     });
   }, []);
 
+  // Fuzzy suggestions for exercise name
   useEffect(() => {
+    if (skipNameSuggest.current) { skipNameSuggest.current = false; return; }
     const q = name.trim();
-    if (q.length < 1) { setSuggestions([]); return; }
+    if (q.length < 1) { setNameSuggestions([]); return; }
     const scored = allNames
       .map(n => ({ n, score: fuzzyScore(q, n) }))
       .filter(x => x.score < Infinity)
       .sort((a, b) => a.score - b.score)
       .slice(0, 5)
       .map(x => x.n);
-    setSuggestions(scored);
+    setNameSuggestions(scored);
   }, [name, allNames]);
 
+  // Fuzzy suggestions for equipment
+  useEffect(() => {
+    if (skipEquipmentSuggest.current) { skipEquipmentSuggest.current = false; return; }
+    const q = equipment.trim();
+    if (q.length < 1) { setEquipmentSuggestions([]); return; }
+    const scored = allEquipment
+      .map(e => ({ e, score: fuzzyScore(q, e) }))
+      .filter(x => x.score < Infinity)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 5)
+      .map(x => x.e);
+    setEquipmentSuggestions(scored);
+  }, [equipment, allEquipment]);
+
   const handleAdd = () => {
-    if (!name.trim()) return;
-    enqueueExercise({ name: toTitleCase(name), equipment });
+    if (!name.trim() || !equipment.trim()) return;
+    enqueueExercise({
+      name: toTitleCase(name),
+      equipment: toTitleCase(equipment),
+    });
     navigation.goBack();
   };
 
@@ -89,25 +121,26 @@ export default function AddExerciseScreen() {
       keyboardVerticalOffset={90}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+
+        {/* ── Exercise Name ── */}
         <Text style={styles.label}>Exercise Name</Text>
         <TextInput
-          style={styles.nameInput}
+          style={styles.input}
           value={name}
           onChangeText={setName}
           placeholder="e.g. Bench Press"
           placeholderTextColor={colors.textSecondary}
           autoFocus
-          returnKeyType="done"
-          onSubmitEditing={handleAdd}
+          returnKeyType="next"
+          onSubmitEditing={() => equipmentRef.current?.focus()}
         />
-
-        {suggestions.length > 0 && (
+        {nameSuggestions.length > 0 && (
           <View style={styles.suggestions}>
-            {suggestions.map(s => (
+            {nameSuggestions.map(s => (
               <TouchableOpacity
                 key={s}
                 style={styles.suggestionItem}
-                onPress={() => { setName(s); setSuggestions([]); }}
+                onPress={() => { skipNameSuggest.current = true; setName(s); setNameSuggestions([]); }}
               >
                 <Text style={styles.suggestionText}>{s}</Text>
               </TouchableOpacity>
@@ -115,26 +148,36 @@ export default function AddExerciseScreen() {
           </View>
         )}
 
+        {/* ── Equipment ── */}
         <Text style={[styles.label, { marginTop: 24 }]}>Equipment</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-          <View style={styles.chipRow}>
-            {EQUIPMENT.map(eq => (
+        <TextInput
+          ref={equipmentRef}
+          style={styles.input}
+          value={equipment}
+          onChangeText={setEquipment}
+          placeholder="e.g. Barbell"
+          placeholderTextColor={colors.textSecondary}
+          returnKeyType="done"
+          onSubmitEditing={handleAdd}
+        />
+        {equipmentSuggestions.length > 0 && (
+          <View style={styles.suggestions}>
+            {equipmentSuggestions.map(s => (
               <TouchableOpacity
-                key={eq}
-                style={[styles.chip, equipment === eq && styles.chipActive]}
-                onPress={() => setEquipment(eq)}
-                activeOpacity={0.7}
+                key={s}
+                style={styles.suggestionItem}
+                onPress={() => { skipEquipmentSuggest.current = true; setEquipment(s); setEquipmentSuggestions([]); }}
               >
-                <Text style={[styles.chipText, equipment === eq && styles.chipTextActive]}>{eq}</Text>
+                <Text style={styles.suggestionText}>{s}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        </ScrollView>
+        )}
 
         <TouchableOpacity
-          style={[styles.addBtn, !name.trim() && styles.addBtnDisabled]}
+          style={[styles.addBtn, (!name.trim() || !equipment.trim()) && styles.addBtnDisabled]}
           onPress={handleAdd}
-          disabled={!name.trim()}
+          disabled={!name.trim() || !equipment.trim()}
           activeOpacity={0.8}
         >
           <Text style={styles.addBtnText}>Add to Workout</Text>
@@ -155,7 +198,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
-  nameInput: {
+  input: {
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
@@ -178,19 +221,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   suggestionText: { color: colors.text, fontSize: 15 },
-  chipScroll: { marginHorizontal: -20, paddingHorizontal: 20 },
-  chipRow: { flexDirection: 'row', gap: 8, paddingRight: 20 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
   addBtn: {
     backgroundColor: colors.accent,
     borderRadius: 14,

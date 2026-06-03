@@ -31,7 +31,14 @@
     },
     "newArchEnabled": false,
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Used to count your daily steps automatically."
+        }
+      ],
+      "expo-document-picker"
     ],
     "extra": {
       "eas": {

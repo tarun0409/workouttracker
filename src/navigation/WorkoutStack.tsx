@@ -10,6 +10,9 @@ import ActiveWorkoutScreen from '../features/workout/screens/ActiveWorkoutScreen
 import AddExerciseScreen from '../features/workout/screens/AddExerciseScreen';
 import ExerciseHistoryScreen from '../features/workout/screens/ExerciseHistoryScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
+import SelectMachineScreen from '../features/cardio/screens/SelectMachineScreen';
+import LogCardioScreen from '../features/cardio/screens/LogCardioScreen';
+import EditCardioScreen from '../features/cardio/screens/EditCardioScreen';
 import { colors } from '../constants/colors';
 
 const Stack = createNativeStackNavigator<WorkoutStackParamList>();
@@ -66,6 +69,21 @@ export default function WorkoutStack() {
         name="Settings"
         component={SettingsScreen}
         options={{ title: 'Settings', presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="SelectMachine"
+        component={SelectMachineScreen}
+        options={{ title: 'Select Machine' }}
+      />
+      <Stack.Screen
+        name="LogCardio"
+        component={LogCardioScreen}
+        options={{ title: '' }}
+      />
+      <Stack.Screen
+        name="EditCardio"
+        component={EditCardioScreen}
+        options={{ title: '' }}
       />
     </Stack.Navigator>
   );

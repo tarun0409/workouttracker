@@ -24,6 +24,26 @@ export function useSteps(date: Date, mode: StepsMode) {
         return;
       }
 
+      // iOS 18 changed CMPedometer: requestAuthorization() MUST be called
+      // before any other API (including isStepCountingAvailable). expo-sensors
+      // 15.0.x skips this on isAvailableAsync(), causing it to throw an
+      // NSException that bypasses JS error handling and crashes the app.
+      // Calling requestPermissionsAsync() first satisfies the iOS 18 requirement.
+      if (Platform.OS === 'ios') {
+        try {
+          const { granted } = await Pedometer.requestPermissionsAsync();
+          if (!granted) {
+            const stored = await getStepsForDate(dateStr);
+            if (active) setSteps(stored?.count ?? null);
+            return;
+          }
+        } catch {
+          const stored = await getStepsForDate(dateStr);
+          if (active) setSteps(stored?.count ?? null);
+          return;
+        }
+      }
+
       const available = await Pedometer.isAvailableAsync().catch(() => false);
       if (!available) {
         const stored = await getStepsForDate(dateStr);

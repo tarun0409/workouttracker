@@ -187,7 +187,7 @@ export default function SettingsScreen() {
           <Ionicons name="cloud-upload-outline" size={20} color={colors.accent} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>Export Data</Text>
-            <Text style={styles.rowSub}>Save workouts and steps as a JSON file</Text>
+            <Text style={styles.rowSub}>Save workouts, cardio and steps as a JSON file</Text>
           </View>
           {exporting
             ? <ActivityIndicator size="small" color={colors.accent} />

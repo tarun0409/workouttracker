@@ -11,6 +11,7 @@ import { WorkoutStackParamList } from '../../../navigation/types';
 import { getSessions, saveSession, deleteSession } from '../../../storage/workoutStorage';
 import { dequeueExercise } from '../exerciseQueue';
 import { colors } from '../../../constants/colors';
+import { toDateStr } from '../../../utils/date';
 
 type Nav = NativeStackNavigationProp<WorkoutStackParamList>;
 type Route = RouteProp<WorkoutStackParamList, 'EditWorkout'>;
@@ -29,7 +30,7 @@ function formatDate(d: Date) {
 export default function EditWorkoutScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { dateLabel, sessionIds } = route.params;
+  const { dateLabel, sessionIds, filterExerciseName, filterExerciseEquipment } = route.params;
 
   const [exercises, setExercises] = useState<LocalExercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,20 +56,27 @@ export default function EditWorkoutScreen() {
         setWorkoutDate(d);
         workoutDateRef.current = d;
       }
-      setExercises(
-        day.flatMap(s =>
-          s.exercises.map(ex => ({
+      let exerciseList = day.flatMap(s =>
+        s.exercises.map(ex => ({
+          id: makeId(),
+          name: ex.name,
+          equipment: ex.equipment,
+          sets: ex.sets.map(set => ({
             id: makeId(),
-            name: ex.name,
-            equipment: ex.equipment,
-            sets: ex.sets.map(set => ({
-              id: makeId(),
-              weight: set.weight > 0 ? set.weight.toString() : '',
-              reps: set.reps > 0 ? set.reps.toString() : '',
-            })),
-          }))
-        )
+            weight: set.weight > 0 ? set.weight.toString() : '',
+            reps: set.reps > 0 ? set.reps.toString() : '',
+          })),
+        }))
       );
+      // If opened from DayDetail by tapping a specific exercise, show only that
+      // exercise — not the entire session — so the user edits exactly what they tapped.
+      if (filterExerciseName && filterExerciseEquipment) {
+        const idx = exerciseList.findIndex(
+          e => e.name === filterExerciseName && e.equipment === filterExerciseEquipment
+        );
+        if (idx >= 0) exerciseList = [exerciseList[idx]];
+      }
+      setExercises(exerciseList);
       setLoading(false);
     })();
   }, []);
@@ -97,31 +105,82 @@ export default function EditWorkoutScreen() {
       Alert.alert('Empty Workout', 'Add at least one exercise before saving.');
       return;
     }
-    const newSession = {
-      id: sessionIds[0],
-      date: workoutDateRef.current.toISOString(),
-      exercises: current
-        .map(ex => ({
-          id: ex.id,
-          name: ex.name,
-          equipment: ex.equipment,
-          sets: ex.sets.map((s, idx) => ({
-            setNumber: idx + 1,
-            weight: parseFloat(s.weight) || 0,
-            reps: parseInt(s.reps) || 0,
-          })),
-        }))
-        .filter(ex => ex.sets.length > 0),
-    };
-    if (newSession.exercises.length === 0) {
+    const editedExercises = current
+      .map(ex => ({
+        id: ex.id,
+        name: ex.name,
+        equipment: ex.equipment,
+        sets: ex.sets.map((s, idx) => ({
+          setNumber: idx + 1,
+          weight: parseFloat(s.weight) || 0,
+          reps: parseInt(s.reps) || 0,
+        })),
+      }))
+      .filter(ex => ex.sets.length > 0);
+    if (editedExercises.length === 0) {
       Alert.alert('No Sets', 'Enter at least one set before saving.');
       return;
     }
+
     isSavingRef.current = true;
-    await Promise.all(sessionIds.map(id => deleteSession(id)));
-    await saveSession(newSession);
+    const newDateISO = workoutDateRef.current.toISOString();
+
+    if (filterExerciseName && filterExerciseEquipment) {
+      // ── Single-exercise edit (opened from DayDetail) ──────────────────────
+      // We need to be smart: if the date changed AND the original session had
+      // other exercises, split this exercise out so the others stay put.
+      const allSessions = await getSessions();
+      const original = allSessions.find(s => s.id === sessionIds[0]);
+
+      if (!original) {
+        // Session disappeared — just save fresh
+        await saveSession({ id: sessionIds[0], date: newDateISO, exercises: editedExercises });
+        navigation.goBack();
+        return;
+      }
+
+      const dateChanged = toDateStr(new Date(original.date)) !== toDateStr(workoutDateRef.current);
+
+      if (!dateChanged) {
+        // Date unchanged — update this exercise's sets in-place within the session.
+        // Replace the first occurrence matching name+equipment.
+        let replaced = false;
+        const updatedExercises = original.exercises.map(ex => {
+          if (!replaced && ex.name === filterExerciseName && ex.equipment === filterExerciseEquipment) {
+            replaced = true;
+            return editedExercises[0];
+          }
+          return ex;
+        });
+        await saveSession({ ...original, exercises: updatedExercises });
+      } else if (original.exercises.length <= 1) {
+        // Date changed, this was the only exercise — just move the session.
+        await deleteSession(original.id);
+        await saveSession({ id: original.id, date: newDateISO, exercises: editedExercises });
+      } else {
+        // Date changed, session has other exercises — split this exercise out.
+        // Remove first matching exercise from original session (keep others on original date).
+        let removed = false;
+        const remaining = original.exercises.filter(ex => {
+          if (!removed && ex.name === filterExerciseName && ex.equipment === filterExerciseEquipment) {
+            removed = true;
+            return false;
+          }
+          return true;
+        });
+        await saveSession({ ...original, exercises: remaining });
+        // Create a new session for this exercise on the new date.
+        await saveSession({ id: makeId(), date: newDateISO, exercises: editedExercises });
+      }
+    } else {
+      // ── Full-session edit (no filter) — original behaviour ────────────────
+      const newSession = { id: sessionIds[0], date: newDateISO, exercises: editedExercises };
+      await Promise.all(sessionIds.map(id => deleteSession(id)));
+      await saveSession(newSession);
+    }
+
     navigation.goBack();
-  }, [navigation, sessionIds]);
+  }, [navigation, sessionIds, filterExerciseName, filterExerciseEquipment]);
 
   // ── Header (back + save buttons) ─────────────────────────────────────────────
   useEffect(() => {

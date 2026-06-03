@@ -20,13 +20,10 @@ export interface WorkoutSession {
 export interface DailySteps {
   date: string;
   count: number;
-  source: 'auto' | 'manual';
+  source: 'manual';
 }
 
-export type StepsMode = 'auto' | 'manual';
-
 export interface AppSettings {
-  stepsMode: StepsMode;
   dailyStepGoal: number;
 }
 

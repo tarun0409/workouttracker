@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Switch, TextInput,
-  TouchableOpacity, Platform, ScrollView, Alert, ActivityIndicator,
+  View, Text, StyleSheet, TextInput,
+  TouchableOpacity, ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,9 +22,6 @@ export default function SettingsScreen() {
   const [importing, setImporting] = useState(false);
 
   if (!loaded) return null;
-
-  const isAuto = settings.stepsMode === 'auto';
-  const platformLabel = Platform.OS === 'ios' ? 'Auto (iPhone Pedometer)' : 'Auto (Android Pedometer)';
 
   const handleGoalSave = () => {
     const val = parseInt(goalInput);
@@ -111,27 +108,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <Text style={styles.groupLabel}>Steps Tracking</Text>
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>{isAuto ? platformLabel : 'Manual Entry'}</Text>
-            <Text style={styles.rowSub}>
-              {isAuto
-                ? 'Steps counted automatically when phone is on you'
-                : 'You enter your step count manually each day'}
-            </Text>
-          </View>
-          <Switch
-            value={isAuto}
-            onValueChange={v => update({ stepsMode: v ? 'auto' : 'manual' })}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor="#fff"
-          />
-        </View>
-      </View>
-
-      <Text style={[styles.groupLabel, { marginTop: 24 }]}>Daily Step Goal</Text>
+      <Text style={styles.groupLabel}>Daily Step Goal</Text>
       <View style={styles.card}>
         {editingGoal ? (
           <View style={styles.goalEditRow}>
@@ -168,12 +145,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         )}
       </View>
-
-      <Text style={styles.note}>
-        {Platform.OS === 'android'
-          ? 'On Android, auto mode counts steps since the last device reboot.'
-          : 'On iPhone, auto mode reads from CoreMotion and works even when the app is closed.'}
-      </Text>
 
       {/* ── Backup & Restore ── */}
       <Text style={[styles.groupLabel, { marginTop: 32 }]}>Backup & Restore</Text>

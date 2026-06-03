@@ -10,14 +10,10 @@
       "bundleIdentifier": "com.tarunmoh.workouttracker",
       "supportsTablet": false,
       "infoPlist": {
-        "NSMotionUsageDescription": "Used to count your daily steps automatically.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "permissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
-      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,12 +28,6 @@
     "newArchEnabled": false,
     "plugins": [
       "@react-native-community/datetimepicker",
-      [
-        "expo-sensors",
-        {
-          "motionPermission": "Used to count your daily steps automatically."
-        }
-      ],
       "expo-document-picker"
     ],
     "extra": {

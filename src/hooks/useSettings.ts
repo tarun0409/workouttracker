@@ -4,7 +4,6 @@ import * as storage from '../storage/settingsStorage';
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>({
-    stepsMode: 'auto',
     dailyStepGoal: 10000,
   });
   const [loaded, setLoaded] = useState(false);

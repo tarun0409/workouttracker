@@ -4,7 +4,6 @@ import { AppSettings } from '../types';
 const KEY = '@settings_v1';
 
 const DEFAULTS: AppSettings = {
-  stepsMode: 'auto',
   dailyStepGoal: 10000,
 };
 

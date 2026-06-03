@@ -29,7 +29,7 @@ interface TodayExercise {
 
 export default function ActivityScreen() {
   const { settings } = useSettings();
-  const { steps, setManual } = useSteps(today, settings.stepsMode);
+  const { steps, setManual } = useSteps(today);
   const [manualInput, setManualInput] = useState('');
   const [showManualModal, setShowManualModal] = useState(false);
   const [weekHistory, setWeekHistory] = useState<DailySteps[]>([]);
@@ -50,7 +50,7 @@ export default function ActivityScreen() {
       d.setDate(d.getDate() - i);
       const dateStr = toDateStr(d);
       const found = all.find(s => s.date === dateStr);
-      last7.push(found ?? { date: dateStr, count: 0, source: 'auto' });
+      last7.push(found ?? { date: dateStr, count: 0, source: 'manual' });
     }
     setWeekHistory(last7);
   };
@@ -126,14 +126,10 @@ export default function ActivityScreen() {
       </View>
 
       <View style={styles.sourceRow}>
-        <Text style={styles.sourceLabel}>
-          {settings.stepsMode === 'manual' ? 'Manual entry' : 'Auto (pedometer)'}
-        </Text>
-        {settings.stepsMode === 'manual' && (
-          <TouchableOpacity style={styles.manualBtn} onPress={() => setShowManualModal(true)}>
-            <Text style={styles.manualBtnText}>Edit today</Text>
-          </TouchableOpacity>
-        )}
+        <Text style={styles.sourceLabel}>Manual entry</Text>
+        <TouchableOpacity style={styles.manualBtn} onPress={() => setShowManualModal(true)}>
+          <Text style={styles.manualBtnText}>Edit today</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Today's gym workout */}
